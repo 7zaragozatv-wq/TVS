@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bucle TV · Estudio</title>
+<style>
+  :root {
+    --bg: #0e1015; --panel: #161a22; --panel2: #1d222c; --line: #2a303c;
+    --text: #e8eaef; --muted: #8b93a3; --accent: #ff7a45; --accent2: #ffc45c;
+    --ok: #3ccf7e; --warn: #ffb547; --bad: #ff5d5d; --live: #ff3b3b;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 14px/1.4 "Segoe UI", system-ui, -apple-system, sans-serif; }
+  button, select, input { font: inherit; color: inherit; }
+  button { background: var(--panel2); border: 1px solid var(--line); border-radius: 6px;
+           padding: 7px 12px; cursor: pointer; white-space: nowrap; }
+  button:hover { border-color: #46506190; background: #252b37; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #1a0d05; font-weight: 600; }
+  button.primary:hover { background: #ff8d5f; }
+  button.black { background: #000; border-color: #444; }
+  button.small { padding: 3px 8px; font-size: 12px; }
+  button:disabled { opacity: .4; cursor: default; }
+  select, input[type=text], input[type=number] { background: var(--bg); border: 1px solid var(--line);
+           border-radius: 6px; padding: 6px 8px; }
+  header { display: flex; align-items: center; gap: 16px; padding: 12px 20px; border-bottom: 1px solid var(--line);
+           background: var(--panel); position: sticky; top: 0; z-index: 5; flex-wrap: wrap; }
+  .logo { font-weight: 700; font-size: 18px; letter-spacing: .3px; }
+  .logo span { color: var(--accent); }
+  .addr { color: var(--muted); font-size: 12px; }
+  .spacer { flex: 1; }
+  main { padding: 18px 20px 40px; max-width: 1500px; margin: 0 auto; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
+  .tvs { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; margin-bottom: 26px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .card.offline { opacity: .55; }
+  .card-head { display: flex; align-items: center; gap: 8px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--bad); flex: none; }
+  .dot.on { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+  .tvname { font-weight: 700; font-size: 16px; cursor: pointer; }
+  .tvname:hover { text-decoration: underline dotted; }
+  .meta { color: var(--muted); font-size: 12px; }
+  .screen { background: #000; border-radius: 6px; padding: 10px 12px; min-height: 58px; border: 1px solid #222; }
+  .screen .st { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+  .screen .now { margin-top: 3px; word-break: break-all; }
+  .st.live { color: var(--live); } .st.black { color: #888; } .st.prep { color: var(--warn); } .st.usb { color: var(--accent2); }
+  .bar { height: 5px; background: var(--line); border-radius: 3px; overflow: hidden; margin-top: 6px; }
+  .bar > div { height: 100%; background: var(--accent2); width: 0; transition: width .4s; }
+  .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .row select { flex: 1; min-width: 120px; }
+  .card .row button { flex: 1; padding-left: 6px; padding-right: 6px; }
+  .warn { color: var(--warn); font-size: 12px; }
+  .cols { display: grid; grid-template-columns: 1fr 1.3fr; gap: 18px; }
+  @media (max-width: 900px) { .cols { grid-template-columns: 1fr; } }
+  .box { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+  .drop { border: 2px dashed var(--line); border-radius: 8px; padding: 14px; text-align: center; color: var(--muted); margin-bottom: 10px; }
+  .drop.over { border-color: var(--accent); color: var(--text); }
+  .list { display: flex; flex-direction: column; gap: 2px; max-height: 460px; overflow: auto; }
+  .item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; background: var(--panel2); }
+  .item .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .item .num { color: var(--muted); width: 22px; text-align: right; font-variant-numeric: tabular-nums; }
+  .badge { font-size: 10px; font-weight: 700; padding: 2px 5px; border-radius: 4px; letter-spacing: .5px; }
+  .badge.v { background: #2c3d63; color: #9dc0ff; } .badge.i { background: #4a3a1e; color: var(--accent2); }
+  .size { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .secs { width: 64px; }
+  .empty { color: var(--muted); padding: 14px; text-align: center; }
+  .uploads { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  #toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: #222936; border: 1px solid var(--line);
+           padding: 10px 16px; border-radius: 8px; opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 10; }
+  #toast.show { opacity: 1; }
+  #toast.err { border-color: var(--bad); }
+  code { background: var(--bg); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+  .help { color: var(--muted); font-size: 12px; margin-top: 10px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Bucle <span>TV</span> · Estudio</div>
+  <div class="addr" id="addr"></div>
+  <div class="spacer"></div>
+  <button class="primary" id="btnSync" title="Arranca la lista asignada en todas las TVs en el mismo instante">▶ Arrancar todas a la vez</button>
+  <button class="black" id="btnAllBlack">■ Todas a negro</button>
+</header>
+
+<main>
+  <h2>Pantallas</h2>
+  <div class="tvs" id="tvs"><div class="empty">Esperando a que se conecte alguna TV… Abre Bucle TV en las TVs.</div></div>
+
+  <div class="cols">
+    <section class="box">
+      <h2>Biblioteca</h2>
+      <div class="drop" id="drop">Arrastra aquí vídeos e imágenes<br>
+        <button id="btnPick" style="margin-top:8px">Elegir archivos…</button>
+        <button id="btnFolder" style="margin-top:8px">Abrir carpeta</button>
+        <input type="file" id="file" multiple accept="video/*,image/*" hidden>
+      </div>
+      <div class="uploads" id="uploads"></div>
+      <div class="list" id="library"></div>
+    </section>
+
+    <section class="box">
+      <h2>Listas</h2>
+      <div class="row" style="margin-bottom:10px">
+        <select id="listSel"></select>
+        <button id="btnNew">Nueva</button>
+        <button id="btnRename">Renombrar</button>
+        <button id="btnDelete">Borrar</button>
+      </div>
+      <div class="list" id="listItems"></div>
+      <div class="help" id="listInfo"></div>
+      <div class="help">
+        Los cambios se guardan solos y las TVs descargan los archivos en segundo plano.
+        Una lista que ya está en pantalla no cambia hasta que pulses <b>Reproducir</b> en esa TV.
+      </div>
+    </section>
+  </div>
+</main>
+<div id="toast"></div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+let data = null;
+let listas = {};            // copia local editable
+let renombradas = {};
+let selected = null;
+let lastMediaSig = "", lastListSig = "";
+let saveTimer = null, saving = false;
+const cards = {};
+
+function toast(msg, err) {
+  const t = $("#toast"); t.textContent = msg; t.className = "show" + (err ? " err" : "");
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.className = "", 2600);
+}
+function fmtSize(b) {
+  if (b > 1e9) return (b / 1e9).toFixed(2) + " GB";
+  if (b > 1e6) return (b / 1e6).toFixed(1) + " MB";
+  return Math.max(1, Math.round(b / 1e3)) + " KB";
+}
+function esc(s) { return String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  let j = {}; try { j = await r.json(); } catch (e) {}
+  if (!r.ok) throw new Error(j.mensaje || j.error || ("Error " + r.status));
+  return j;
+}
+async function control(tv, accion, lista) {
+  let q = "/api/control?tv=" + encodeURIComponent(tv) + "&accion=" + encodeURIComponent(accion);
+  if (lista) q += "&lista=" + encodeURIComponent(lista);
+  try { const j = await api(q); toast(j.mensaje); poll(); } catch (e) { toast(e.message, true); }
+}
+
+// ---------------- Pantallas ----------------
+function renderTVs() {
+  const box = $("#tvs");
+  if (!data.tvs.length) return;
+  const empty = box.querySelector(".empty"); if (empty) empty.remove();
+  const names = Object.keys(data.listas);
+  for (const tv of data.tvs) {
+    let c = cards[tv.id];
+    if (!c) {
+      c = document.createElement("div"); c.className = "card";
+      c.innerHTML = `
+        <div class="card-head"><div class="dot"></div><div class="tvname" title="Cambiar nombre"></div>
+          <div class="spacer"></div><button class="small forget" title="Quitar del panel">✕</button></div>
+        <div class="meta"></div>
+        <div class="screen"><div class="st"></div><div class="now"></div><div class="dl"></div></div>
+        <div class="row"><select class="lsel"></select></div>
+        <div class="row">
+          <button class="primary play">▶ Reproducir</button>
+          <button class="next">⏭ Siguiente</button>
+          <button class="black blk">■ Negro</button>
+        </div>
+        <div class="warn"></div>`;
+      c.querySelector(".tvname").onclick = async () => {
+        const n = prompt("Nombre de esta pantalla:", tv.nombre);
+        if (n && n.trim()) { await api("/api/tv/config", {method: "POST", body: JSON.stringify({id: tv.id, nombre: n.trim()})}); poll(); }
+      };
+      c.querySelector(".forget").onclick = async () => {
+        if (confirm("¿Quitar " + tv.nombre + " del panel? Si sigue encendida, volverá a aparecer.")) {
+          await api("/api/tv/olvidar", {method: "POST", body: JSON.stringify({id: tv.id})});
+          c.remove(); delete cards[tv.id]; poll();
+        }
+      };
+      c.querySelector(".lsel").onchange = async (e) => {
+        await api("/api/tv/config", {method: "POST", body: JSON.stringify({id: tv.id, lista: e.target.value})}); poll();
+      };
+      c.querySelector(".play").onclick = () => control(c._num, "reproducir");
+      c.querySelector(".next").onclick = () => control(c._num, "siguiente");
+      c.querySelector(".blk").onclick = () => control(c._num, "negro");
+      box.appendChild(c); cards[tv.id] = c;
+    }
+    c._num = tv.num;
+    c.classList.toggle("offline", !tv.online);
+    c.querySelector(".dot").classList.toggle("on", tv.online);
+    c.querySelector(".tvname").textContent = tv.num + " · " + tv.nombre;
+    c.querySelector(".meta").textContent = (tv.online ? "Conectada" : "Desconectada") + (tv.modelo ? " · " + tv.modelo : "") + (tv.ip ? " · " + tv.ip : "");
+
+    const r = tv.reporte || {};
+    const st = c.querySelector(".st"), now = c.querySelector(".now"), dl = c.querySelector(".dl");
+    let label = "—", cls = "";
+    if (!tv.online) { label = "Sin conexión"; }
+    else if (r.estado === "lista") { label = "● En pantalla · " + (r.lista || ""); cls = "live"; }
+    else if (r.estado === "negro") { label = "Negro"; cls = "black"; }
+    else if (r.estado === "preparando") { label = "Preparando · " + (r.lista || ""); cls = "prep"; }
+    else if (r.estado === "usb") { label = "Reproduciendo USB"; cls = "usb"; }
+    else if (r.estado === "esperando") { label = "Esperando lista"; }
+    st.textContent = label; st.className = "st " + cls;
+    let nowTxt = r.actual || "";
+    if (tv.online && typeof r.desfase === "number" && r.estado === "lista") nowTxt += (nowTxt ? "  ·  " : "") + "sincro " + (r.desfase >= 0 ? "+" : "") + r.desfase + " ms";
+    now.textContent = nowTxt;
+    const d = r.descarga;
+    if (tv.online && d && d.total > 0 && (d.hechos < d.total || d.error)) {
+      const pct = d.total ? Math.round(100 * (d.hechos + (d.pct || 0) / 100) / d.total) : 0;
+      dl.innerHTML = `<div class="meta">${d.error ? "⚠ " + esc(d.error) : "Descargando " + d.hechos + "/" + d.total + (d.archivo ? " · " + esc(d.archivo) : "")}</div><div class="bar"><div style="width:${pct}%"></div></div>`;
+    } else if (tv.online && d && d.total > 0) {
+      dl.innerHTML = `<div class="meta">✓ ${d.total} archivos en la TV${r.libre ? " · libre " + fmtSize(r.libre) : ""}</div>`;
+    } else dl.innerHTML = "";
+
+    const sel = c.querySelector(".lsel");
+    const sig = names.join("\u0001") + "|" + tv.lista;
+    if (sel._sig !== sig && document.activeElement !== sel) {
+      sel.innerHTML = `<option value="">— Elige una lista —</option>` + names.map(n => `<option ${n === tv.lista ? "selected" : ""}>${esc(n)}</option>`).join("");
+      sel._sig = sig;
+    }
+    c.querySelector(".play").disabled = !tv.lista;
+    c.querySelector(".warn").textContent = tv.cambios ? "La lista ha cambiado: pulsa Reproducir para aplicar los cambios." : "";
+  }
+  for (const id of Object.keys(cards)) if (!data.tvs.find(t => t.id === id)) { cards[id].remove(); delete cards[id]; }
+}
+
+// ---------------- Biblioteca ----------------
+function renderLibrary() {
+  const box = $("#library");
+  if (!data.medios.length) { box.innerHTML = `<div class="empty">Todavía no hay archivos.</div>`; return; }
+  box.innerHTML = "";
+  data.medios.forEach(m => {
+    const el = document.createElement("div"); el.className = "item";
+    el.innerHTML = `<span class="badge ${m.t}">${m.t === "v" ? "VÍDEO" : "IMAGEN"}</span>
+      <span class="name" title="${esc(m.f)}">${esc(m.f)}</span><span class="size">${fmtSize(m.s)}</span>
+      <button class="small add" title="Añadir a la lista seleccionada">+ Lista</button>
+      <button class="small del" title="Borrar archivo">🗑</button>`;
+    el.querySelector(".add").onclick = () => {
+      if (!selected) { toast("Primero crea o elige una lista", true); return; }
+      listas[selected].push({f: m.f, ms: 10000}); changed();
+    };
+    el.querySelector(".del").onclick = async () => {
+      if (!confirm("¿Borrar «" + m.f + "»? También se quitará de las listas.")) return;
+      await api("/api/media?f=" + encodeURIComponent(m.f), {method: "DELETE"});
+      for (const n in listas) listas[n] = listas[n].filter(it => it.f !== m.f);
+      poll();
+    };
+    box.appendChild(el);
+  });
+}
+
+function upload(files) {
+  [...files].forEach(file => {
+    const line = document.createElement("div");
+    line.textContent = file.name + " · 0%";
+    $("#uploads").appendChild(line);
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", "/api/media?f=" + encodeURIComponent(file.name));
+    xhr.upload.onprogress = e => { if (e.lengthComputable) line.textContent = file.name + " · " + Math.round(100 * e.loaded / e.total) + "%"; };
+    xhr.onload = () => {
+      if (xhr.status === 200) { line.remove(); toast("Subido: " + file.name); poll(); }
+      else { line.textContent = "⚠ " + file.name + ": no se pudo subir (" + (xhr.responseText || xhr.status) + ")"; }
+    };
+    xhr.onerror = () => line.textContent = "⚠ " + file.name + ": error de conexión";
+    xhr.send(file);
+  });
+}
+
+// ---------------- Listas ----------------
+function renderListSelector() {
+  const names = Object.keys(listas);
+  if (selected && !(selected in listas)) selected = null;
+  if (!selected && names.length) selected = names[0];
+  $("#listSel").innerHTML = names.length ? names.map(n => `<option ${n === selected ? "selected" : ""}>${esc(n)}</option>`).join("") : `<option>(sin listas)</option>`;
+  $("#listSel").disabled = !names.length;
+  $("#btnRename").disabled = $("#btnDelete").disabled = !selected;
+  renderListItems();
+}
+function renderListItems() {
+  const box = $("#listItems");
+  if (!selected) { box.innerHTML = `<div class="empty">Crea una lista con «Nueva».</div>`; $("#listInfo").textContent = ""; return; }
+  const items = listas[selected];
+  if (!items.length) box.innerHTML = `<div class="empty">Lista vacía. Añade archivos desde la biblioteca con «+ Lista».</div>`;
+  else box.innerHTML = "";
+  const kinds = Object.fromEntries(data.medios.map(m => [m.f, m.t]));
+  items.forEach((it, i) => {
+    const t = kinds[it.f] || (/\.(jpe?g|png|webp|bmp|gif|heic|heif)$/i.test(it.f) ? "i" : "v");
+    const el = document.createElement("div"); el.className = "item";
+    el.innerHTML = `<span class="num">${i + 1}</span><span class="badge ${t}">${t === "v" ? "VÍDEO" : "IMAGEN"}</span>
+      <span class="name" title="${esc(it.f)}">${esc(it.f)}${kinds[it.f] ? "" : " <span class='warn'>(no está en la biblioteca)</span>"}</span>
+      ${t === "i" ? `<input type="number" class="secs" min="1" max="3600" step="1" value="${Math.round((it.ms || 10000) / 1000)}" title="Segundos"> s` : ""}
+      <button class="small up" ${i === 0 ? "disabled" : ""}>↑</button>
+      <button class="small down" ${i === items.length - 1 ? "disabled" : ""}>↓</button>
+      <button class="small rm">✕</button>`;
+    const secs = el.querySelector(".secs");
+    if (secs) secs.onchange = () => { it.ms = Math.max(1, Math.min(3600, parseInt(secs.value) || 10)) * 1000; changed(false); updateListInfo(); };
+    el.querySelector(".up").onclick = () => { [items[i - 1], items[i]] = [items[i], items[i - 1]]; changed(); };
+    el.querySelector(".down").onclick = () => { [items[i + 1], items[i]] = [items[i], items[i + 1]]; changed(); };
+    el.querySelector(".rm").onclick = () => { items.splice(i, 1); changed(); };
+    box.appendChild(el);
+  });
+  updateListInfo();
+}
+function updateListInfo() {
+  if (!selected) return;
+  const kinds = Object.fromEntries(data.medios.map(m => [m.f, m.t]));
+  const items = listas[selected];
+  const imgs = items.filter(it => kinds[it.f] === "i");
+  const vids = items.length - imgs.length;
+  const secs = imgs.reduce((a, it) => a + (it.ms || 10000) / 1000, 0);
+  $("#listInfo").textContent = items.length ? `${items.length} elementos · ${vids} vídeos + ${imgs.length} imágenes (${secs} s de imágenes)` : "";
+}
+function changed(rerender = true) {
+  if (rerender) renderListSelector();
+  pendingSave = true;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveLists, 400);
+}
+async function saveLists() {
+  saving = true;
+  try {
+    await api("/api/listas", {method: "POST", body: JSON.stringify({listas, renombradas})});
+    renombradas = {};
+  } catch (e) { toast("No se pudo guardar: " + e.message, true); }
+  saving = false; pendingSave = false; lastListSig = ""; poll();
+}
+
+// ---------------- Bucle de actualización ----------------
+async function poll() {
+  try {
+    data = await api("/api/panel");
+  } catch (e) { $("#addr").textContent = "⚠ Sin conexión con el programa del estudio"; return; }
+  $("#addr").textContent = data.direcciones.map(ip => ip + ":" + data.puerto).join("  ·  ");
+  renderTVs();
+  const mediaSig = data.medios.map(m => m.f + m.s).join("|");
+  if (mediaSig !== lastMediaSig) { lastMediaSig = mediaSig; renderLibrary(); if (selected) renderListItems(); }
+  const listSig = JSON.stringify(data.listas);
+  if (listSig !== lastListSig && !saveTimer_pending()) {
+    lastListSig = listSig;
+    const focused = document.activeElement && document.activeElement.classList.contains("secs");
+    if (!focused) { listas = JSON.parse(listSig); renderListSelector(); }
+  }
+}
+let pendingSave = false;
+function saveTimer_pending() { return saving || pendingSave; }
+
+$("#btnSync").onclick = () => control("todas", "sincronizar");
+$("#btnAllBlack").onclick = () => control("todas", "negro");
+$("#btnPick").onclick = () => $("#file").click();
+$("#file").onchange = e => { upload(e.target.files); e.target.value = ""; };
+$("#btnFolder").onclick = async () => {
+  const j = await api("/api/abrir-carpeta", {method: "POST"});
+  if (!j.ok) toast("Carpeta: " + j.carpeta);
+};
+const drop = $("#drop");
+["dragenter", "dragover"].forEach(ev => document.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave", "drop"].forEach(ev => document.addEventListener(ev, e => { e.preventDefault(); if (ev === "drop" || e.target === drop) drop.classList.remove("over"); }));
+document.addEventListener("drop", e => { if (e.dataTransfer && e.dataTransfer.files.length) upload(e.dataTransfer.files); });
+
+$("#listSel").onchange = e => { selected = e.target.value; renderListItems(); $("#btnRename").disabled = $("#btnDelete").disabled = !selected; };
+$("#btnNew").onclick = () => {
+  const n = (prompt("Nombre de la nueva lista:", "") || "").trim();
+  if (!n) return;
+  if (listas[n]) { toast("Ya existe una lista con ese nombre", true); return; }
+  listas[n] = []; selected = n; changed();
+};
+$("#btnRename").onclick = () => {
+  const n = (prompt("Nuevo nombre:", selected) || "").trim();
+  if (!n || n === selected) return;
+  if (listas[n]) { toast("Ya existe una lista con ese nombre", true); return; }
+  const rebuilt = {};
+  for (const k of Object.keys(listas)) rebuilt[k === selected ? n : k] = listas[k];
+  listas = rebuilt; renombradas[selected] = n; selected = n; changed();
+};
+$("#btnDelete").onclick = () => {
+  if (!confirm("¿Borrar la lista «" + selected + "»? Los archivos no se borran.")) return;
+  delete listas[selected]; selected = null; changed();
+};
+
+poll();
+setInterval(poll, 1000);
+</script>
+</body>
+</html>
